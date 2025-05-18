@@ -1,31 +1,31 @@
-// File: src/app/api/proxy1/[id]/route.ts
-
 import { NextRequest, NextResponse } from 'next/server';
 
 const BACKEND_URL = 'https://postsbackend-8d4e.onrender.com/api/posts';
 
-export async function GET( request: NextRequest, { params }: { params: { id: string } }) {
-  const { id } = await params;
+function extractId(request: NextRequest): string {
+  const segments = request.nextUrl.pathname.split('/');
+  return segments[segments.length - 1];
+}
+
+export async function GET(request: NextRequest) {
+  const id = extractId(request);
 
   try {
     const response = await fetch(`${BACKEND_URL}/${id}`);
-
     if (!response.ok) {
-      console.error('Failed to fetch post from backend:', response.status);
       return NextResponse.json({ message: 'Post not found' }, { status: response.status });
     }
 
     const data = await response.json();
-    return NextResponse.json(data, { status: 200 });
+    return NextResponse.json(data);
   } catch (error) {
     console.error('GET error:', error);
     return NextResponse.json({ error: 'Failed to fetch post' }, { status: 500 });
   }
 }
 
-
-export async function DELETE(_request: NextRequest, { params }: { params: { id: string } }) {
-  const { id } = await params;
+export async function DELETE(request: NextRequest) {
+  const id = extractId(request);
 
   try {
     const response = await fetch(`${BACKEND_URL}/${id}`, { method: 'DELETE' });
@@ -42,31 +42,16 @@ export async function DELETE(_request: NextRequest, { params }: { params: { id: 
   }
 }
 
+export async function PATCH(request: NextRequest) {
+  const id = extractId(request);
 
-
-
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { id } = await params;
-    if (!id) throw new Error('No ID provided');
-
-    const bodyText = await req.text();
-    if (!bodyText) throw new Error('No body provided');
-
-    let body;
-    try {
-      body = JSON.parse(bodyText);
-    } catch {
-      throw new Error('Invalid JSON in request body');
-    }
-
+    const body = await request.json();
     if (!body.status) throw new Error('No status provided in body');
 
-    const res = await fetch(`https://postsbackend-8d4e.onrender.com/api/posts/${id}/status`, {
+    const res = await fetch(`${BACKEND_URL}/${id}/status`, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: body.status }),
     });
 
@@ -75,18 +60,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const data = await res.json();
     return NextResponse.json(data);
   } catch (err) {
-    console.error('Proxy error:', err);
+    console.error('PATCH error:', err);
     const errorMessage = (err instanceof Error) ? err.message : 'Unknown error';
     return NextResponse.json({ error: errorMessage }, { status: 400 });
   }
 }
 
-
-
-
-
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
-  const { id } = await params;
+export async function PUT(request: NextRequest) {
+  const id = extractId(request);
 
   try {
     const body = await request.json();
